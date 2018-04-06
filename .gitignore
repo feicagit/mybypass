@@ -1,0 +1,10 @@
+*.obj
+*.tlog
+*.sdf
+*.VC.db
+*\ipch\*
+*.pdb
+*.pch
+*.log
+*.ipch
+*.idb
