@@ -139,15 +139,16 @@ void LoginCallback::DoLogin( std::string user, std::string pass )
 	LoginManager::GetInstance()->SetLoginStatus(LoginStatus_LOGIN);
 
 	LoginManager::GetInstance()->SetAccount(user);
-	std::string pass_md5 = QString::GetMd5(pass); //密码MD5加密（用户自己的应用请去掉加密）
-	LoginManager::GetInstance()->SetPassword(pass_md5);
+	//std::string pass_md5 = QString::GetMd5(pass); //密码MD5加密（用户自己的应用请去掉加密）
+	LoginManager::GetInstance()->SetPassword(pass);//pass_md5
 
 	_InitUserFolder();
 	_InitLog();
 	{
 		int ver = 0;
 		std::wstring vf;
-		LocalHelper::GetAppLocalVersion(ver, vf);
+		double fBypasssize;
+		LocalHelper::GetAppLocalVersion(ver, vf, &fBypasssize);
 		QLOG_APP(L"App Version {0}") << ver;
 		QLOG_APP(L"Account {0}") << LoginManager::GetInstance()->GetAccount();
 		QLOG_APP(L"UI ThreadId {0}") << GetCurrentThreadId();
@@ -158,6 +159,13 @@ void LoginCallback::DoLogin( std::string user, std::string pass )
 	//1. app key是应用的标识，不同应用之间的数据（用户、消息、群组等）是完全隔离的。开发自己的应用时，请替换为自己的app key。
 	//2. 用户登录自己的应用是不需要对密码md5加密的，替换app key之后，请记得去掉加密。
 	std::string app_key = GetConfigValueAppKey();
+	//std::string app_key = "68d2a68a1176727198194fd001aa470b";//flyfly
+	std::string new_app_key = GetConfigValue(g_AppKey);
+	if (!new_app_key.empty())
+	{
+		app_key = new_app_key;
+	}
+
 	auto cb = std::bind(OnLoginCallback, std::placeholders::_1, nullptr);
 	nim::Client::Login(app_key, LoginManager::GetInstance()->GetAccount(), LoginManager::GetInstance()->GetPassword(), cb);
 }
@@ -173,7 +181,7 @@ void LoginCallback::ReLogin()
 
 void LoginCallback::CacelLogin()
 {
-	assert(LoginManager::GetInstance()->GetLoginStatus() == LoginStatus_LOGIN);
+	//assert(LoginManager::GetInstance()->GetLoginStatus() == LoginStatus_LOGIN);
 	LoginManager::GetInstance()->SetLoginStatus(LoginStatus_CANCEL);
 	QLOG_APP(L"-----login cancel begin-----");
 }
@@ -323,7 +331,7 @@ void LoginCallback::OnLoginCallback( const nim::LoginRes& login_res, const void*
 
 	if (login_res.res_code_ == nim::kNIMResSuccess)
 	{
-		if (login_res.login_step_ == nim::kNIMLoginStepLogin)
+		if (login_res.login_step_ == nim::kNIMLoginStepLogin) //kNIMLoginStepLogining kNIMLoginStepLogin
 		{
 			Post2UI(nbase::Bind(&UILoginCallback, login_res.res_code_, false));
 			if (!login_res.other_clients_.empty())

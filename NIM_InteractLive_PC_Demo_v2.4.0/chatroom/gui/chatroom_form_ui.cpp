@@ -7,7 +7,8 @@
 #include <sys\timeb.h>
 #include "bypass_live_frontpage.h"
 #include "player/player_manager.h"
-#include "main_picture_set_form.h"
+#include "module/local/local_helper.h"
+
 using namespace nim_comp;
 
 namespace nim_chatroom
@@ -42,9 +43,19 @@ namespace nim_chatroom
 		gift_cholocate_count_ = 0;
 		gift_bear_count_ = 0;
 
+		gift_kiss_count_=0;
+		gift_yongbao_count_ = 0;
+		gift_666_count_ = 0;
+		gift_jiezhi_count_ = 0;
+
 		has_add_creater_ = false;
 		is_loading_history_ = false;
 		pre_uid_ = "";
+
+		int ver = 0;
+		std::wstring vf;
+		fBypasssize = 0.5;
+		nim_comp::LocalHelper::GetAppLocalVersion(ver, vf, &fBypasssize);//flyfly
 	}
 
 
@@ -185,19 +196,35 @@ namespace nim_chatroom
 		lb_gift_2_ = (ui::Label*)FindControl(L"gift_2");
 		lb_gift_3_ = (ui::Label*)FindControl(L"gift_3");
 		lb_gift_4_ = (ui::Label*)FindControl(L"gift_4");
+		lb_gift_5_ = (ui::Label*)FindControl(L"gift_5");
+		lb_gift_6_ = (ui::Label*)FindControl(L"gift_6");
+		lb_gift_7_ = (ui::Label*)FindControl(L"gift_7");
+		lb_gift_8_ = (ui::Label*)FindControl(L"gift_8");
 		lb_gift_1_count_ = (ui::Label*)FindControl(L"gift_1_count");
 		lb_gift_2_count_ = (ui::Label*)FindControl(L"gift_2_count");
 		lb_gift_3_count_ = (ui::Label*)FindControl(L"gift_3_count");
 		lb_gift_4_count_ = (ui::Label*)FindControl(L"gift_4_count");
+		lb_gift_5_count_ = (ui::Label*)FindControl(L"gift_5_count");
+		lb_gift_6_count_ = (ui::Label*)FindControl(L"gift_6_count");
+		lb_gift_7_count_ = (ui::Label*)FindControl(L"gift_7_count");
+		lb_gift_8_count_ = (ui::Label*)FindControl(L"gift_8_count");
 		gift_png_1_ = (ui::Control*)FindControl(L"gift_png_1");
 		gift_png_2_ = (ui::Control*)FindControl(L"gift_png_2");
 		gift_png_3_ = (ui::Control*)FindControl(L"gift_png_3");
 		gift_png_4_ = (ui::Control*)FindControl(L"gift_png_4");
+		gift_png_5_ = (ui::Control*)FindControl(L"gift_png_5");
+		gift_png_6_ = (ui::Control*)FindControl(L"gift_png_6");
+		gift_png_7_ = (ui::Control*)FindControl(L"gift_png_7");
+		gift_png_8_ = (ui::Control*)FindControl(L"gift_png_8");
 
 		gift_box_1_ = (ui::VBox*)FindControl(L"gift_box_1");
 		gift_box_2_ = (ui::VBox*)FindControl(L"gift_box_2");
 		gift_box_3_ = (ui::VBox*)FindControl(L"gift_box_3");
 		gift_box_4_ = (ui::VBox*)FindControl(L"gift_box_4");
+		gift_box_5_ = (ui::VBox*)FindControl(L"gift_box_5");
+		gift_box_6_ = (ui::VBox*)FindControl(L"gift_box_6");
+		gift_box_7_ = (ui::VBox*)FindControl(L"gift_box_7");
+		gift_box_8_ = (ui::VBox*)FindControl(L"gift_box_8");
 
 		gift_prompt_ = (ui::VBox*)FindControl(L"gift_prompt");
 		gift_info_ = (ui::VBox*)FindControl(L"giftinfo");
@@ -361,10 +388,6 @@ namespace nim_chatroom
 		{
 			BOOL bHandled = FALSE;
 			OnEsc(bHandled);
-		}
-		else if (name == L"main_picture_set")
-		{
-			MainPictureSetForm *form = nim_ui::WindowsManager::SingletonShow<MainPictureSetForm>(MainPictureSetForm::kClassName);
 		}
 		else if (name == L"audio_hook")
 		{
@@ -710,6 +733,20 @@ namespace nim_chatroom
 		}
 		return true;
 	}
+	bool ChatroomForm::OnMemberRoomMenu(ui::EventArgs* args)
+	{
+		Box* member_item = static_cast<Box*>(args->pSender);
+		if (member_item != NULL)
+		{
+			ui::Label* name = (ui::Label*)member_item->FindSubControl(L"name");
+			std::wstring uid = member_item->GetName();
+			if (name != NULL)
+			{
+				ShowRoomOperateMenu(uid);
+			}
+		}
+		return true;
+	}
 
 	void ChatroomForm::ShowBypassPrompt()
 	{
@@ -721,7 +758,56 @@ namespace nim_chatroom
 				bypass_prompt_->SetVisible(true);
 		}
 	}
+	void ChatroomForm::ShowRoomOperateMenu(std::wstring &uid)
+	{
+		if (uid.empty())
+			return;
 
+		//主播拥有操作该区域的权限
+		if (creater_id_ == LoginManager::GetInstance()->GetAccount())
+		{
+			clicked_user_account_.clear();
+			clicked_user_account_ = nbase::UTF16ToUTF8(uid);
+
+			StdClosure cb = [this](){
+				CMenuWnd* pMenu = new CMenuWnd(NULL);
+				STRINGorID xml(L"room_member_menu.xml");
+				POINT point;
+				GetCursorPos(&point);
+				pMenu->Init(xml, _T("xml"), point, CMenuWnd::RIGHT_TOP);
+				//注册回调
+				//这里根据状态还要进行判断
+				CMenuElementUI* agree = (CMenuElementUI*)pMenu->FindControl(L"agree");
+				agree->AttachSelect(nbase::Bind(&ChatroomForm::RoomAgreeMenuItemClick, this, std::placeholders::_1));
+
+				CMenuElementUI* reject = (CMenuElementUI*)pMenu->FindControl(L"reject");
+				reject->AttachSelect(nbase::Bind(&ChatroomForm::RoomRejectMenuItemClick, this, std::placeholders::_1));
+				Label* reject_label = (Label*)pMenu->FindControl(L"reject_info");
+				auto roommember = members_list_.find(clicked_user_account_);//查找房间成员
+				if (roommember != members_list_.end())
+				{
+					switch (roommember->second.is_muted_)
+					{
+					case true:
+						agree->SetVisible(true);
+						reject->SetVisible(false); //交互中未有拒绝这个选项，先屏蔽掉
+						reject_label->SetText(L"解除禁言");
+						break;
+					case false:
+						agree->SetVisible(false);
+						reject->SetVisible(true);
+						reject_label->SetText(L"禁言");
+						break;
+					default:
+						break;
+					}					
+				}
+
+				pMenu->Show(this->GetHWND());
+			};
+			Post2UI(cb);
+		}
+	}
 
 	void ChatroomForm::ShowBypassOperateMenu(std::wstring &uid)
 	{
@@ -815,6 +901,50 @@ namespace nim_chatroom
 		RequestPopMicLink(nbase::IntToString(room_id_), bypass_inact_account_);
 		SendSysNotifyMsg(kDisConnectingMIC, bypass_inact_account_);
 		
+		return true;
+	}
+
+	bool ChatroomForm::RoomAgreeMenuItemClick(ui::EventArgs* args)//flyfly 解除禁言
+	{
+		if (!livestreaming_)
+		{
+			//ShowMsgBox(m_hWnd, L"直播还未开启！", nullptr, L"提示", L"确定", L"");
+			//return true;
+		}
+		auto roommember = members_list_.find(clicked_user_account_);//查找房间成员
+		if (roommember != members_list_.end())
+		{
+			roommember->second.is_muted_ = false;
+		}
+		
+		ChatRoomSetMemberAttributeParameters member_param;
+		member_param.account_id_ = clicked_user_account_;
+		member_param.attribute_ = kNIMChatRoomMemberAttributeNomalMember;//flyfly 解除禁言
+		ChatRoom::SetMemberAttributeOnlineAsync(room_id_, member_param, nbase::Bind(&ChatroomForm::OnSetMembersCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+		//UpdateRoomMembersState(clicked_user_account_, roommember->second.is_muted_);
+		return true;
+	}
+
+	bool ChatroomForm::RoomRejectMenuItemClick(ui::EventArgs* args)//禁言
+	{
+		if (!livestreaming_)
+		{
+			//ShowMsgBox(m_hWnd, L"直播还未开启！", nullptr, L"提示", L"确定", L"");
+			//return true;
+		}
+		auto roommember = members_list_.find(clicked_user_account_);//查找房间成员
+		if (roommember != members_list_.end())
+		{
+			roommember->second.is_muted_ = true;
+		}
+
+		ChatRoomSetMemberAttributeParameters member_param;
+		member_param.account_id_ = clicked_user_account_;
+		member_param.attribute_ = kNIMChatRoomMemberAttributeMuteList;//flyfly 禁言
+		ChatRoom::SetMemberAttributeOnlineAsync(room_id_, member_param, nbase::Bind(&ChatroomForm::OnSetMembersCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+		//UpdateRoomMembersState(clicked_user_account_, roommember->second.is_muted_);
 		return true;
 	}
 
@@ -912,13 +1042,16 @@ namespace nim_chatroom
 		// 现在单击了在线成员列表后会重新刷新成员，无须单独维护成员列表
 		auto exit_member = members_list_.find(uid);
 		if (exit_member != members_list_.end())
-		{
-			if (!exit_member->second.is_blacklist_ && !exit_member->second.is_muted_ && exit_member->second.type_ == 0)
+		{			//flyfly 退出聊天室用户都删除
+			if (!exit_member->second.is_blacklist_) // && !exit_member->second.is_muted_ && exit_member->second.type_ == 0
 			{
 				Control* member_item = online_members_list_->FindSubControl(nbase::UTF8ToUTF16(uid));
 				online_members_list_->Remove(member_item);
-				members_list_.erase(exit_member);
-			}
+				members_list_.erase(exit_member);	
+				//flyfly 在线人数 成员
+				ui::Option *option_online_members = (ui::Option*)FindControl(L"option_online_members");
+				option_online_members->SetText(nbase::StringPrintf(L"成员:%d", online_members_list_->GetCount()));
+			}			
 		}
 	}
 
@@ -1011,7 +1144,27 @@ namespace nim_chatroom
 
 		ShowMsgBox(m_hWnd, L"进入房间失败！", ToWeakCallback(cb), L"提示", L"确定", L"");
 	}
+	void ChatroomForm::UpdateRoomMembersState(string uid, bool is_muted)
+	{
+		StdClosure closure = [=]()
+		{
+			ui::ButtonBox* bypass_member_item = (ui::ButtonBox*)online_members_list_->FindSubControl(nbase::UTF8ToUTF16(uid));
+			ui::Control* bypass_state = (ui::Control*)bypass_member_item->FindSubControl(L"bypass_state");
 
+			bool micstate = is_muted;//flyfly
+			if (micstate)
+			{
+				bypass_state->SetBkImage(L"icon_mute.png");
+			}
+			else
+			{
+				bypass_state->SetBkImage(L"");
+			}
+		
+		};
+		Post2UI(closure);
+
+	}
 	void ChatroomForm::UpdateBypassMembersState(string uid, NTESLiveMicState micstate, InactionType type, BypassMemberListOpt opt, string nick)
 	{
 		StdClosure closure = [=]()

@@ -1,5 +1,6 @@
 #include "chatroom_form.h"
 #include "player/player_manager.h"
+#include "base/util/string_number_conversions.h"
 
 #define ROOMMSG_R_N _T("\r\n")
 
@@ -95,12 +96,12 @@ namespace nim_chatroom
 					{
 						if (master_)
 						{
-							if (bypassopt == 0)
+							if (bypassopt == 9)//0
 							{
 								AddGiftNumbers((GiftType)present, count);
 								AddGiftInfo(result.from_id_, (GiftType)present, count);
 							}
-							else if (bypassopt == 1)
+							else if (bypassopt == 10)//flyfly 1
 							{
 								AddGiftInfo(result.from_id_, GiftType::kGiftRedHeart, 1);
 							}
@@ -239,7 +240,7 @@ namespace nim_chatroom
 					OnLiveStreamInit(true);
 				}
 			}
-			//RequestAddress(nbase::IntToString(room_id_), LoginManager::GetInstance()->GetAccount());
+			//RequestAddress(nbase::IntToString(room_id_), LoginManager::GetInstance()->GetAccount());//flyfly add
 			InitChatRoomQueueInfo();
 
 		};
@@ -269,8 +270,9 @@ namespace nim_chatroom
 					bulletin_->SetReadOnly(false);
 				}
 			}
-			std::wstring room_name = nbase::StringPrintf(L"%s[直播%lld]", nbase::UTF8ToUTF16(info.name_).c_str(), room_id_);
+			std::wstring room_name = nbase::StringPrintf(L"今来网PC直播系统 %s[直播%lld]", nbase::UTF8ToUTF16(info.name_).c_str(), room_id_);
 			name_->SetText(room_name);
+			
 		};
 		Post2UI(cb);
 	}
@@ -283,13 +285,18 @@ namespace nim_chatroom
 	void ChatroomForm::GetMembers()
 	{
 		ChatRoomGetMembersParameters member_param;
-		member_param.type_ = kNIMChatRoomGetMemberTypeSolid;
+		member_param.type_ = kNIMChatRoomGetMemberTypeSolid;//flyfly
 		ChatRoom::GetMembersOnlineAsync(room_id_, member_param, nbase::Bind(&ChatroomForm::OnGetMembersCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 		member_param.type_ = kNIMChatRoomGetMemberTypeTemp;
 		ChatRoom::GetMembersOnlineAsync(room_id_, member_param, nbase::Bind(&ChatroomForm::OnGetMembersCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 	}
-
+	void ChatroomForm::OnSetMembersCallback(__int64 room_id, int error_code, const ChatRoomMemberInfo& info)
+	{
+		if (error_code != nim::kNIMResSuccess || room_id_ != room_id)
+			return;
+		UpdateRoomMembersState(info.account_id_, info.is_muted_);
+	}
 	void ChatroomForm::OnGetMembersCallback(__int64 room_id, int error_code, const std::list<ChatRoomMemberInfo>& infos)
 	{
 		if (error_code != nim::kNIMResSuccess || room_id_ != room_id)
@@ -297,7 +304,6 @@ namespace nim_chatroom
 
 		StdClosure cb = [=](){
 			empty_members_list_->SetVisible(false);
-
 			for (auto& it : infos)
 			{
 				members_list_[it.account_id_] = it;
@@ -306,6 +312,7 @@ namespace nim_chatroom
 				// 不加入离线的游客
 				if (it.guest_flag_ == kNIMChatRoomGuestFlagGuest && it.state_ == kNIMChatRoomOnlineStateOffline)
 					continue;
+				if (it.state_ == kNIMChatRoomOnlineStateOffline) continue;//flyfly  只要是离线都不显示了。
 
 				if (NULL != online_members_list_->FindSubControl(nbase::UTF8ToUTF16(it.account_id_)))
 					continue;
@@ -313,9 +320,21 @@ namespace nim_chatroom
 				ui::ButtonBox* room_member_item = (ui::ButtonBox*)ui::GlobalManager::CreateBoxWithCache(L"chatroom/room_member_item.xml");
 				if (room_member_item)
 				{
+					room_member_item->AttachMenu(nbase::Bind(&ChatroomForm::OnMemberRoomMenu, this, std::placeholders::_1));//flyfly
 					ui::Control* member_type = (ui::Control*)room_member_item->FindSubControl(L"member_type");
 					ui::Control* header_image = (ui::Control*)room_member_item->FindSubControl(L"header_image");
 					ui::Label* name = (ui::Label*)room_member_item->FindSubControl(L"name");
+					ui::Control* bypass_state = (ui::Control*)room_member_item->FindSubControl(L"bypass_state");
+
+					bool micstate = it.is_muted_;//flyfly
+					if (micstate)
+					{
+						bypass_state->SetBkImage(L"icon_mute.png");
+					}
+					else
+					{
+						bypass_state->SetBkImage(L"");
+					}
 
 					if (it.type_ == kCreater)//创建者++++++++++++
 					{
@@ -350,7 +369,11 @@ namespace nim_chatroom
 
 					room_member_item->SetUTF8Name(it.account_id_);
 				}
-			}
+				
+			}	
+			//flyfly 在线人数 成员
+			ui::Option *option_online_members = (ui::Option*)FindControl(L"option_online_members");
+			option_online_members->SetText(nbase::StringPrintf(L"成员:%d", online_members_list_->GetCount()));
 		};
 		Post2UI(cb);
 	}
@@ -506,6 +529,8 @@ namespace nim_chatroom
 					}
 				}
 				str = nbase::StringPrintf(L"欢迎%s进入直播间", nick.c_str());
+				ui::EventArgs param;
+				OnSelOnlineMembers(&param);//flyfly add 刷新在线人数
 			}
 			else if (notification.id_ == kNIMChatRoomNotificationIdMemberExit)
 			{
@@ -526,11 +551,10 @@ namespace nim_chatroom
 					ChatRoom::QueuePollAsync(room_id_, *it_id, nullptr);
 					UpdateBypassMembersState(*it_id, NTESLiveMicStateConnected, kVedio, kRemove, *it_nick);
 				}
-
+				
 				RemoveMember(*it_id);
-			}
-
-			AddNotify(str, is_history);
+			}		
+			AddNotify(str, is_history);			
 		}
 	}
 
@@ -664,6 +688,18 @@ namespace nim_chatroom
 		case nim_chatroom::kGiftIceCream:
 			file_name = L"ice_small.png";
 			break;
+		case nim_chatroom::kGiftJiezhi:
+			file_name = L"jiezhi_small.png";
+			break;
+		case nim_chatroom::kGiftYongbao:
+			file_name = L"yongbao_small.png";
+			break;
+		case nim_chatroom::kGiftKiss:
+			file_name = L"kiss_small.png";
+			break;
+		case nim_chatroom::kGift666:
+			file_name = L"g666_small.png";
+			break;
 		case nim_chatroom::kGiftRedHeart:
 			file_name = L"red_heart.png";
 			classifier = L"个";
@@ -671,6 +707,7 @@ namespace nim_chatroom
 		default:
 			break;
 		}
+		if (file_name.empty()) return;
 		// 
 		long lSelBegin = 0, lSelEnd = 0;
 		CHARFORMAT2 cf;
@@ -699,7 +736,7 @@ namespace nim_chatroom
 
 		//添加图片
 		msg_list_->SetSel(lSelEnd, lSelEnd);
-		if (file_name.empty()) return;
+		
 		std::wstring file = QPath::GetAppPath();
 		file.append(L"themes\\default\\chatroom\\" + file_name);
 		if (nbase::FilePathIsExist(file, false))
@@ -793,6 +830,30 @@ namespace nim_chatroom
 				gift_control_info_->pInfo = lb_gift_4_;
 				gift_control_info_->pCount = lb_gift_4_count_;
 				break;
+			case 4:
+				gift_box_5_->SetVisible(true);
+				gift_control_info_->pImage = gift_png_5_;
+				gift_control_info_->pInfo = lb_gift_5_;
+				gift_control_info_->pCount = lb_gift_5_count_;
+				break;
+			case 5:
+				gift_box_6_->SetVisible(true);
+				gift_control_info_->pImage = gift_png_6_;
+				gift_control_info_->pInfo = lb_gift_6_;
+				gift_control_info_->pCount = lb_gift_6_count_;
+				break;
+			case 6:
+				gift_box_7_->SetVisible(true);
+				gift_control_info_->pImage = gift_png_7_;
+				gift_control_info_->pInfo = lb_gift_7_;
+				gift_control_info_->pCount = lb_gift_7_count_;
+				break;
+			case 7:
+				gift_box_8_->SetVisible(true);
+				gift_control_info_->pImage = gift_png_8_;
+				gift_control_info_->pInfo = lb_gift_8_;
+				gift_control_info_->pCount = lb_gift_8_count_;
+				break;
 			default:
 				break;
 			}
@@ -842,6 +903,42 @@ namespace nim_chatroom
 			gift_control_info_->pImage->SetBkImage(L"ice_1.png");
 			gift_control_info_->pInfo->SetText(str);
 			gift_control_info_->pCount->SetUTF8Text(nbase::IntToString(gift_ice_count_));
+			break;
+		case nim_chatroom::kGiftJiezhi:
+			gift_jiezhi_count_ += number;
+			str = L"戒指x";
+			gift_control_info_->pImage->SetFixedHeight(60);
+			gift_control_info_->pImage->SetFixedWidth(33);
+			gift_control_info_->pImage->SetBkImage(L"jiezhi_1.png");
+			gift_control_info_->pInfo->SetText(str);
+			gift_control_info_->pCount->SetUTF8Text(nbase::IntToString(gift_jiezhi_count_));
+			break;
+		case nim_chatroom::kGiftYongbao:
+			gift_yongbao_count_ += number;
+			str = L"拥抱x";
+			gift_control_info_->pImage->SetFixedHeight(60);
+			gift_control_info_->pImage->SetFixedWidth(33);
+			gift_control_info_->pImage->SetBkImage(L"yongbao_1.png");
+			gift_control_info_->pInfo->SetText(str);
+			gift_control_info_->pCount->SetUTF8Text(nbase::IntToString(gift_yongbao_count_));
+			break;
+		case nim_chatroom::kGiftKiss:
+			gift_kiss_count_ += number;
+			str = L"吻x";
+			gift_control_info_->pImage->SetFixedHeight(60);
+			gift_control_info_->pImage->SetFixedWidth(33);
+			gift_control_info_->pImage->SetBkImage(L"kiss_1.png");
+			gift_control_info_->pInfo->SetText(str);
+			gift_control_info_->pCount->SetUTF8Text(nbase::IntToString(gift_kiss_count_));
+			break;
+		case nim_chatroom::kGift666:
+			gift_666_count_ += number;
+			str = L"666x";
+			gift_control_info_->pImage->SetFixedHeight(60);
+			gift_control_info_->pImage->SetFixedWidth(33);
+			gift_control_info_->pImage->SetBkImage(L"g666_1.png");
+			gift_control_info_->pInfo->SetText(str);
+			gift_control_info_->pCount->SetUTF8Text(nbase::IntToString(gift_666_count_));
 			break;
 		default:
 			break;

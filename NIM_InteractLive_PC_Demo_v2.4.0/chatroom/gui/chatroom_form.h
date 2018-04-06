@@ -131,6 +131,10 @@ namespace nim_chatroom
 		kGiftChocolate,
 		kGiftBear,
 		kGiftIceCream,
+		kGiftJiezhi,
+		kGiftYongbao,
+		kGiftKiss,
+		kGift666,
 		kGiftRedHeart
 	};
 
@@ -184,6 +188,7 @@ public:
 	void OnGetChatRoomInfoCallback(__int64 room_id, int error_code, const ChatRoomInfo& info);
 	void OnNotificationCallback(const ChatRoomNotification& notification);
 	void OnGetMembersCallback(__int64 room_id, int error_code, const std::list<ChatRoomMemberInfo>& infos);
+	void OnSetMembersCallback(__int64 room_id, int error_code, const ChatRoomMemberInfo& info);
 	void GetMsgHistoryCallback(__int64 room_id, int error_code, const std::list<ChatRoomMessage>& msgs);
 	
 	void OnChatRoomRequestEnterCallback(int error_code, const std::string& result);
@@ -222,10 +227,11 @@ public:
 	//观众进之前应做的操作：需拉一把聊天室队列，并更新相关信息,主播初始化信息
 	void InitChatRoomQueueInfo();
 	void UpdateBypassMembersState(string uid, NTESLiveMicState micstate, InactionType type, BypassMemberListOpt opt,string nick);
+	void UpdateRoomMembersState(string uid, bool is_muted);
 	void DeleteBypassMembers();
 	void AudienceAfterAnchorOpt(NTESAnchorOperate opt);//观众发起连麦主播端操作后观众应做的操作
 	void SetChatRoomRoomName(string room_name){ room_name_ = room_name; }
-
+	
 	//拉流时错误操作
 	void PullPlayError(int code, const std::string& msg);
 	
@@ -237,6 +243,8 @@ private:
 	void OnHttoDownloadReady(HttpResourceType type, const std::string& account, const std::wstring& photo_path);
 
 	void StartLiveStreamRet(bool ret);
+	void OnStartLiveClick_Send();//flyfly
+	void LeaveChatRoom();
 	bool OnStartLiveStream(ui::EventArgs* msg);
 	bool OnStopLiveStream(ui::EventArgs* msg);
 
@@ -264,6 +272,11 @@ private:
 	bool BypassAgreeMenuItemClick(ui::EventArgs* args);
 	bool BypassRejectMenuItemClick(ui::EventArgs* args);
 	bool OnMemberBypassMenu(ui::EventArgs* args);
+
+	bool RoomAgreeMenuItemClick(ui::EventArgs* args);
+	bool RoomRejectMenuItemClick(ui::EventArgs* args);
+	void ShowRoomOperateMenu(std::wstring &name);
+	bool OnMemberRoomMenu(ui::EventArgs* args);
 
 private:
 	void SetMemberAdmin(const std::string &id, bool is_admin);	//设置成员列表界面中某个成员的类型
@@ -350,6 +363,7 @@ private:
 	std::string		room_enter_token_;
 	bool            need_set_notify_ext_;
 	bool            audience_;
+	double fBypasssize;//flyfly
 	
 private:	
 	//ui::Control*	header_icon_ = NULL; //标题栏头像
@@ -360,10 +374,18 @@ private:
 	ui::Label	*lb_gift_2_ = NULL;
 	ui::Label	*lb_gift_3_ = NULL;
 	ui::Label	*lb_gift_4_ = NULL;
+	ui::Label	*lb_gift_5_ = NULL;
+	ui::Label	*lb_gift_6_ = NULL;
+	ui::Label	*lb_gift_7_ = NULL;
+	ui::Label	*lb_gift_8_ = NULL;
 	ui::Label	*lb_gift_1_count_ = NULL;
 	ui::Label	*lb_gift_2_count_ = NULL;
 	ui::Label	*lb_gift_3_count_ = NULL;
 	ui::Label	*lb_gift_4_count_ = NULL;
+	ui::Label	*lb_gift_5_count_ = NULL;
+	ui::Label	*lb_gift_6_count_ = NULL;
+	ui::Label	*lb_gift_7_count_ = NULL;
+	ui::Label	*lb_gift_8_count_ = NULL;
 
 	//ui richedit
 	ui::RichEdit	*bulletin_ = NULL;//公告	
@@ -391,7 +413,7 @@ private:
 	ui::Button	*btn_interact_set_ = NULL;
 	ui::Button  *btn_audiohook_set = NULL;
 	
-	//ui listbox
+	//ui listbox 
 	ui::ListBox	*online_members_list_ = NULL;
 	ui::ListBox	*bypass_members_list_ = NULL;
 	
@@ -402,6 +424,10 @@ private:
 	ui::Control	*gift_png_2_ = NULL;
 	ui::Control	*gift_png_3_ = NULL;
 	ui::Control	*gift_png_4_ = NULL;
+	ui::Control	*gift_png_5_ = NULL;
+	ui::Control	*gift_png_6_ = NULL;
+	ui::Control	*gift_png_7_ = NULL;
+	ui::Control	*gift_png_8_ = NULL;
 
 	//ui cbitmapcontrol
 	ui::CBitmapControl	*video_show_ctrl_ = NULL;
@@ -414,6 +440,10 @@ private:
 	ui::VBox	*gift_box_2_ = NULL;
 	ui::VBox	*gift_box_3_ = NULL;
 	ui::VBox	*gift_box_4_ = NULL;
+	ui::VBox	*gift_box_5_ = NULL;
+	ui::VBox	*gift_box_6_ = NULL;
+	ui::VBox	*gift_box_7_ = NULL;
+	ui::VBox	*gift_box_8_ = NULL;
 
 	IDropTarget	*droptarget_;
 	nim_comp::IRichEditOleCallbackEx	*richeditolecallback_;
@@ -468,6 +498,10 @@ private:
 	int	gift_bear_count_;
 	int	gift_ice_count_;
 	int	gift_cholocate_count_;
+	int	gift_kiss_count_;
+	int	gift_yongbao_count_;
+	int	gift_666_count_;
+	int	gift_jiezhi_count_;
 
 
 	

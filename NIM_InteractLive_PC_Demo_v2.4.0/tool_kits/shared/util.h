@@ -2,7 +2,7 @@
 #include <string>
 #include <map>
 
-#define DEMO_GLOBAL_APP_KEY		"6f49e3f759ccd47810b445444eebc090"
+#define DEMO_GLOBAL_APP_KEY		"68d2a68a1176727198194fd001aa470b" //6f49e3f759ccd47810b445444eebc090 std::string app_key = "68d2a68a1176727198194fd001aa470b";//flyfly
 
 class QString
 {

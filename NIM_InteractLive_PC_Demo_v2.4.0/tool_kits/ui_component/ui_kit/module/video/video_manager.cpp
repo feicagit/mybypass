@@ -585,7 +585,8 @@ void VideoManager::SetMemberBlacklist(const std::string& uid, bool add, bool aud
 
 void VideoManager::CreateRoom(const std::string& room_name, const std::string& custom_info, nim::VChat::Opt2Callback cb)
 {
-	nim::VChat::CreateRoom(room_name, custom_info, "", cb);
+	std::string room_name1 = room_name + "-" + room_name;
+	nim::VChat::CreateRoom(room_name1, custom_info, "", cb);
 }
 
 void VideoManager::SetUidAsMainPicture(const std::string& uid, nim::VChat::Opt2Callback cb)
@@ -595,6 +596,7 @@ void VideoManager::SetUidAsMainPicture(const std::string& uid, nim::VChat::Opt2C
 
 bool VideoManager::JoinRoom(nim::NIMVideoChatMode mode, const std::string& room_name, const std::string& session_id, const std::string &rtmp_url, bool bypass_rtmp, nim::VChat::Opt2Callback cb)
 {
+	std::string room_name1 = room_name + "-" + room_name;
 	Json::FastWriter fs;
 	Json::Value value;
 	value[nim::kNIMVChatSessionId] = session_id;
@@ -615,11 +617,25 @@ bool VideoManager::JoinRoom(nim::NIMVideoChatMode mode, const std::string& room_
 	}
 	{
 		value[nim::kNIMVChatVideoFrameRate] = nim::kNIMVChatVideoFrameRate20;
-	}
+	}	
+	//{"version":0,"set_host_as_main":true,"host_area":{"adaption":1},"special_show_mode":true,"n_host_area_number":1,"n_host_area_0":{"position_x":0,"position_y":0,"width_rate":10000,"height_rate":10000,"adaption":1}}
+	//std::string strBypass = "{\"version\":0,\"split_mode\":0,\"set_host_as_main\":true,\"host_area\":{\"adaption\":1},\"special_show_mode\":true,\"n_host_area_number\":3,\"n_host_area_0\":{\"position_x\":0,\"position_y\":0,\"width_rate\":10000,\"height_rate\":10000,\"adaption\":1}}";
+	//std::string strBypass = "{\"version\":0,\"set_host_as_main\":false,\"host_area\":{\"adaption\":1,\"position_x\":7000,\"position_y\":700,\"width_rate\":2100,\"height_rate\":2100},\"special_show_mode\":true,\"n_host_area_number\":3,\"main_width\":1200,\"main_height\":1200,\"background\":{\"rgb_r\":204,\"rgb_g\":204,\"rgb_b\":204},\"n_host_area_0\":{\"position_x\":0,\"position_y\":0,\"width_rate\":10000,\"height_rate\":10000,\"adaption\":1},\"n_host_area_1\":{\"position_x\":7000,\"position_y\":4000,\"width_rate\":2100,\"height_rate\":2100,\"adaption\":1},\"n_host_area_2\":{\"position_x\":7000,\"position_y\":7000,\"width_rate\":2100,\"height_rate\":2100,\"adaption\":1}}";
+	//std::string strBypass = "{\"split_mode\":4,\"custom_layout\":{\"version\":0,\"set_host_as_main\":false,\"host_area\":{\"adaption\":1,\"position_x\":7000,\"position_y\":700,\"width_rate\":2100,\"height_rate\":2100},\"special_show_mode\":true,\"n_host_area_number\":3,\"main_width\":1200,\"main_height\":1200,\"n_host_area_0\":{\"position_x\":0,\"position_y\":0,\"width_rate\":10000,\"height_rate\":10000,\"adaption\":1},\"n_host_area_1\":{\"position_x\":7000,\"position_y\":4000,\"width_rate\":2100,\"height_rate\":2100,\"adaption\":1},\"n_host_area_2\":{\"position_x\":7000,\"position_y\":7000,\"width_rate\":2100,\"height_rate\":2100,\"adaption\":1}}}";
+	std::string strBypass = "{\"split_mode\":4,\"custom_layout\":{\"version\":0,\"set_host_as_main\":true,\"host_area\":{\"adaption\":1},\"special_show_mode\":true,\"n_host_area_number\":1,\"n_host_area_0\":{\"position_x\":0,\"position_y\":0,\"width_rate\":10000,\"height_rate\":10000,\"adaption\":1}}}";
+
+	Json::Reader reader;
+	Json::Value json_object;
+	if (!reader.parse(strBypass, json_object))
+		return false;
+
+	Json::Value::Members mem = json_object.getMemberNames();
+	for (auto iter = mem.begin(); iter != mem.end(); iter++)
 	{
-		value[nim::kNIMVChatAudioHighRate] = 1;
+		value[*iter] = json_object[*iter];//flyfly 是否定制窗口
 	}
-	std::string json_value = fs.write(value);
-	return nim::VChat::JoinRoom(mode, room_name, json_value, cb);
+
+	static std::string json_value = fs.write(value);
+	return nim::VChat::JoinRoom(mode, room_name1, json_value, cb);
 }
 }

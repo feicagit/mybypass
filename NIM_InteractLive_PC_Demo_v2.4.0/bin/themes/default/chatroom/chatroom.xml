@@ -45,8 +45,7 @@
                     <Label name="ls_time" font="1" normaltextcolor="message_tip" valign="center" margin="18,0,0,0" text="00:00:00" />
                     <Control width="stretch"/>
 
-                    <Button class="btn_global_white_80x30" name="main_picture_set" visible="false" text="设置主画面" valign="center" margin="10,0,0,0" />
-                    <Button class="btn_global_white_80x30" name="audio_hook" visible="true" text="背景乐" valign="center" margin="10,0,0,0"/>
+                    <Button class="btn_global_white_80x30" name="audio_hook" visible="true" text="背景乐" valign="center" visible="false" margin="10,0,0,0"/>
                     <Button class="btn_global_white_80x30" name="camera_set" visible="true" text="摄像头设置" valign="center" margin="10,0,0,0"/>
                     <Button class="btn_global_white_80x30" name="mic_set" text="麦克风设置" valign="center" margin="10,0,10,0"/>
                     <Button class="btn_global_white_80x30" name="model_set" text="摄像头直播" valign="center" margin="10,0,10,0"/>
@@ -98,7 +97,7 @@
           </VBox>-->
 
           <VBox width="246" height="stretch" margin="4,0,0,0" >
-            <VBox width="stretch" height="auto" bkcolor="white" bordersize="1,1,1,1" bordercolor="splitline_level1" padding="1,1,1,1">
+            <VBox width="stretch" height="auto" bkcolor="white" bordersize="1,1,1,1" bordercolor="splitline_level1" padding="1,1,1,1" visible="fasle">
               <Label width="stretch" height="26" text="直播公告" align="vcenter" font="2" normaltextcolor="darkcolor"/>
               <Control normalcolor="bk_listitem_selected" width="stretch" height="1"/>
               <RichEdit name="bulletin" width="246" height="60" font="1" padding="6,2,6,2" rich="false" vscrollbar="true" autovscroll="true" normaltextcolor="dark2color" bkimage="file='icon_nobulletin.png' dest='99,8,148,52'" readonly="true" />
@@ -141,7 +140,7 @@
                 <!--礼物-->
                 <Box>
                   <!--<VListBox class="list" name="bypass_members_list" vscrollunit="80"/>-->
-                  <VBox name="giftinfo" height="220">
+                  <VBox name="giftinfo" height="440">
                     <HBox margin="10,10,0,0">
                       <VBox width="100" height="100" bordersize="1" bordercolor="gift_color_border" name="gift_box_1" visible="false">
                         <Control name="gift_png_1" margin="0,12,0,0" width="60" height="60"  visible="false" halign="center"/>
@@ -183,6 +182,47 @@
                         </HBox>
                       </VBox>
                     </HBox>
+                    
+                    <HBox margin="10,10,0,0">
+                      <VBox width="100" height="100" bordersize="1" bordercolor="gift_color_border" name="gift_box_5" visible="false">
+                        <Control name="gift_png_5" margin="0,12,0,0" width="60" height="60"  visible="false" halign="center"/>
+                        <HBox margin="0,4,0,10">
+                          <Control />
+                          <Label name="gift_5" text="玫瑰x" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_name" textpadding="7,0,0,0" visible="false"/>
+                          <Label name="gift_5_count" text="5" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_number" textpadding="5,0,0,3" visible="false"/>
+                          <Control />
+                        </HBox>
+                      </VBox>
+                      <VBox width="100" height="100" margin="10,0,0,0" bordersize="1" bordercolor="gift_color_border" name="gift_box_6" visible="false">
+                        <Control name="gift_png_6" margin="0,12,0,0" width="60" height="60"   visible="false" halign="center"/>
+                        <HBox margin="0,4,0,10">
+                          <Control />
+                          <Label name="gift_6" text="玫瑰x" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_name" textpadding="7,0,0,0" visible="false"/>
+                          <Label name="gift_6_count" text="5" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_number" textpadding="5,0,0,3" visible="false"/>
+                          <Control />
+                        </HBox>
+                      </VBox>
+                    </HBox>
+                    <HBox margin="10,10,0,0">
+                      <VBox width="100" height="100" bordersize="1" bordercolor="gift_color_border" name="gift_box_7" visible="false">
+                        <Control name="gift_png_7" margin="0,12,0,0" width="60" height="60"  visible="false" halign="center"/>
+                        <HBox margin="0,4,0,10">
+                          <Control />
+                          <Label name="gift_7" text="玫瑰x" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_name" textpadding="7,0,0,0" visible="false"/>
+                          <Label name="gift_7_count" text="5" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_number" textpadding="5,0,0,3" visible="false"/>
+                          <Control />
+                        </HBox>
+                      </VBox>
+                      <VBox width="100" height="100" margin="10,0,0,0" bordersize="1" bordercolor="gift_color_border" name="gift_box_8" visible="false">
+                        <Control name="gift_png_8" margin="0,12,0,0" width="60" height="60"   visible="false" halign="center"/>
+                        <HBox margin="0,4,0,10">
+                          <Control />
+                          <Label name="gift_8" text="玫瑰x" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_name" textpadding="7,0,0,0" visible="false"/>
+                          <Label name="gift_8_count" text="5" font="11" height="stretch" halign="center" align="vcenter" normaltextcolor="gift_color_number" textpadding="5,0,0,3" visible="false"/>
+                          <Control />
+                        </HBox>
+                      </VBox>
+                    </HBox>
                   </VBox>
 
                   <VBox name="gift_prompt" halign="center" margin="0,40,0,0" height="100" visible="true">
@@ -205,7 +245,7 @@
                         hotimage="icon_hover.png" pushedimage="icon_pushed.png" selectednormalimage="icon_pushed.png"
                         selectedforenormalimage="file='btn_face.png' dest='5,5,25,25'" selectedforedisabledimage="file='btn_face.png' dest='5,5,25,25' fade='80'"/>
 
-                <Button name="btn_jsb" width="30" height="30" valign="center" margin="7,0,12,0" tooltiptext="石头剪刀布"
+                <Button name="btn_jsb" visible="false" width="30" height="30" valign="center" margin="7,0,12,0" tooltiptext="石头剪刀布"
                       forenormalimage="btn_jsb.png" foredisabledimage="file='btn_jsb.png' fade='80'"
                       hotimage="icon_hover.png" pushedimage="icon_pushed.png"/>
 

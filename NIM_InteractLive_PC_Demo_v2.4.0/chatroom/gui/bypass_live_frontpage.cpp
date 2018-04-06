@@ -6,7 +6,9 @@
 #include "base/util/string_number_conversions.h"
 #include "about/about_form.h"
 #include "util/user.h"
+#include "../tool_kits/base/util/base64.h"
 
+#define kServerAddr "http://api.gttxkjgs.com"//flyfly
 static nim::NetDetectCbInfo info_;
 
 namespace nim_chatroom
@@ -163,8 +165,8 @@ namespace nim_chatroom
 		{
 			//Todo
 			btn_create_room_->SetEnabled(false);
-			CreateMyRoomInfo();
 			
+			CreateMyRoomInfo();			
 		}
 		else if (name == L"menu_button")
 		{
@@ -200,10 +202,139 @@ namespace nim_chatroom
 			chat_form->RequestEnter(id);
 		}
 	}
-
-	void BypassLiveFontPage::CreateMyRoomInfo()
+	void BypassLiveFontPage::BozhuStatus(int64_t room_id, string pushUrl, string roomname)
 	{
-		string roomname = nim::Tool::GetUuid();
+		auto http_cb = [this, room_id, pushUrl, roomname](bool ret, int response_code, const std::string& reply)
+		{
+			do
+			{
+				if (!ret || response_code != nim::kNIMResSuccess)
+				{
+					QLOG_ERR(L"User Leave room error. Error code: {0}.") << response_code;
+					std::wstring info = L"操作失败";
+					StdClosure closure = [=]()
+					{
+						ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+					};
+					Post2UI(closure);
+					break;
+				}
+
+				Json::Value json_reply;
+				Json::Reader reader;
+				if (reader.parse(reply, json_reply) && json_reply.isObject())
+				{
+					int res = json_reply["code"].asInt();
+					if (res != 0)
+					{
+						StdClosure closure = [=]()
+						{
+							std::wstring info = L"用户校验失败，未登录或登录失效";
+							QLOG_ERR(L"User Leave room error{0}.") << info;
+							//ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+						};
+						Post2UI(closure);
+						QLOG_ERR(L"UserLogout error. Json rescode: {0}.") << res;
+						break;
+					}
+					else
+					{
+						int status = json_reply["data"]["info"]["status"].asInt();
+						if (status == -1)
+						{
+							StdClosure closure = [=]()
+							{
+								std::wstring info = L"您还不是播主，请在手机端申请！";
+								QLOG_ERR(L"User is not Zhubo error{0}.") << info;
+								//ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+
+								btn_create_room_->SetEnabled(true);
+								ShowMsgBox(m_hWnd, L"您还不是播主，请在手机端申请！", MsgboxCallback(), L"提示", L"确定", L"");
+							};
+							Post2UI(closure);
+							QLOG_ERR(L"UserLogout error. Json rescode: {0}.") << res;
+							break;
+						}
+						else if (status == 0)
+						{
+							StdClosure closure = [=]()
+							{
+								std::wstring info = L"您的播主申请正在审核中...";
+								QLOG_ERR(L"User is not Zhubo error{0}.") << info;
+								//ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+
+								btn_create_room_->SetEnabled(true);
+								ShowMsgBox(m_hWnd, L"您的播主申请正在审核中...", MsgboxCallback(), L"提示", L"确定", L"");
+							};
+							Post2UI(closure);
+							QLOG_ERR(L"UserLogout error. Json rescode: {0}.") << res;
+							break;
+						}
+					}
+
+					//flyfly 权限正确，进入
+					StdClosure closure = [this, room_id, pushUrl, roomname]()
+					{
+						if (room_id != 0)
+						{
+							nim_chatroom::ChatroomForm* chat_form = new nim_chatroom::ChatroomForm(room_id);
+							chat_form->Create(NULL, ChatroomForm::kClassName, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, 0, false);
+							chat_form->SetLivingModel(livingmodel_);
+							chat_form->SetNotifyExt(true);
+							chat_form->CenterWindow();
+							chat_form->ShowWindow();
+							chat_form->SetRtmpUrl(pushUrl);
+							chat_form->SetChatRoomRoomName(roomname);
+							chat_form->RequestEnter(room_id);
+						}
+						else
+						{
+
+						}
+					};
+					Post2UI(closure);
+				}
+			} while (0);
+		};
+
+		std::string server_addr = kServerAddr;//flyfly
+		std::string new_server_address = GetConfigValue(g_AppServerAddress);
+		if (!new_server_address.empty())
+		{
+			server_addr = new_server_address;
+		}
+
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount(); //user_name_;//
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
+		std::stringstream stream;//flyfly
+		stream << room_id;
+		std::string addr = "/live/userStatus?livenum=";
+		addr = addr + string(stream.str());
+		addr += "&uid=";
+		//flyfly
+		std::string api_addr = server_addr + addr;
+		api_addr += strOut;
+
+		string device_id;
+		//nbase::GetMacAddress(device_id);
+		std::string body;
+		body += "sid=" + device_id + "&deviceId=" + device_id;
+		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), ToWeakCallback(http_cb));
+		//nim_http::HttpRequest request(api_addr,"",0, ToWeakCallback(http_cb));
+		request.AddHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+		request.AddHeader("Demo-Id", "video-live");
+		nim_http::PostRequest(request);
+	}
+	void BypassLiveFontPage::CreateMyRoomInfo()
+	{		
+		//string roomname = nim::Tool::GetUuid();
+		//先获取主播身份吧，如果是才进行//flyfly
+		string roomname = nim_comp::LoginManager::GetInstance()->GetAccount();//flyfly
 		auto http_cb = [this,roomname](bool ret, int response_code, const std::string& reply)
 		{
 			int64_t room_id = 0;
@@ -231,8 +362,8 @@ namespace nim_chatroom
 				Json::Reader reader;
 				if (reader.parse(reply, json_reply) && json_reply.isObject())
 				{
-					int res = json_reply["res"].asInt();
-					if (res != 200)
+					std::string code = json_reply["code"].asString();
+					if (code == "-1")
 					{
 						StdClosure closure = [=]()
 						{
@@ -242,18 +373,20 @@ namespace nim_chatroom
 
 						};
 						Post2UI(closure);
-						QLOG_ERR(L"Invoke get my room info error. Json rescode: {0}, {1}.") << res << reply;
+						QLOG_ERR(L"Invoke get my room info error. Json rescode: {0}, {1}.") << code << reply;
 						break;
 					}
-					Json::Value json_info = json_reply["msg"];
+					Json::Value json_info = json_reply["data"]["msg"];
 					Json::Value json_reply_msg;
-					room_id = json_reply["msg"]["roomid"].asInt64();
-					rtmpPullUrl = json_reply["msg"]["live"]["rtmpPullUrl"].asString();
-					pushUrl = json_reply["msg"]["live"]["pushUrl"].asString();
-					status = json_reply["msg"]["status"].asInt();
+					room_id = json_reply["data"]["info"]["roomid"].asInt64();
+					rtmpPullUrl = "rtmp://v0655249c.live.126.net/live/fa6eada503ee4f7cb5c1e6607dd2716a";// json_reply["data"]["info"]["broadcasturl"].asString();
+					pushUrl = json_reply["data"]["info"]["broadcasturl"].asString();// json_reply["msg"]["live"]["pushUrl"].asString();
+					//status = json_reply["msg"]["status"].asInt();
 				}
 			} while (0);
-			StdClosure closure = [this,room_id,pushUrl,roomname]()
+			//检查主播身份
+			BozhuStatus(room_id, pushUrl, roomname);
+			/*StdClosure closure = [this,room_id,pushUrl,roomname]()
 			{
 				if (room_id != 0)
 				{
@@ -272,11 +405,30 @@ namespace nim_chatroom
 
 				}
 			};
-			Post2UI(closure);
+			Post2UI(closure);*/
 		};
-		std::string server_addr = "https://app.netease.im";
-		std::string addr = "/api/chatroom/hostEntrance";//"https://apptest.netease.im/api/chatroom/hostEntrance"
+		std::string server_addr = kServerAddr; //https://app.netease.im
+		std::string new_server_address = GetConfigValue(g_AppServerAddress);
+		if (!new_server_address.empty())
+		{
+			server_addr = new_server_address;
+		}
+
+		//std::string addr = "/api/chatroom/hostEntrance";//"https://apptest.netease.im/api/chatroom/hostEntrance"
+		//std::string api_addr = server_addr + addr;
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount();//creater_id_  nim_comp::LoginManager::GetInstance()->GetAccount();
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
+		std::string addr = "/live/create?screenMode=1&name=";
+		addr += strAccid;
+		addr += "&uid=";//flyfly " / room / create";
 		std::string api_addr = server_addr + addr;
+		api_addr += strOut;
+
 		std::string new_api_addr = GetConfigValue(g_AppServerAddress);
 		if (!new_api_addr.empty())
 		{
@@ -293,8 +445,8 @@ namespace nim_chatroom
 		value["type"] = kUnLive;
 		value["meetingName"] =roomname;
 		std::string body;
-		string ext = fw.write(value);
-		body += "uid=" + nim_comp::LoginManager::GetInstance()->GetAccount()
+		string ext = fw.write(value); //nim_comp::LoginManager::GetInstance()->GetAccount() strAccid
+		body += "name=" + roomname + "&uid = " + strOut
 			+= "&ext=" + ext + "&avType=" + avType;
 
 		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), ToWeakCallback(http_cb));

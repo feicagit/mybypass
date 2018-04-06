@@ -15,9 +15,9 @@
                         <Button class="btn_wnd_min" name="minbtn" margin="4,0,4,0"/>
                         <Button class="btn_wnd_close" name="closebtn"/>
                     </HBox>
-                    <HBox height="auto">
+                    <HBox height="auto" >
                         <Control />
-                        <Button name="register_account" margin="0,5,15,10" halign="right" text="注册" cursortype="hand" font="24" normaltextcolor="link_green"/>
+                        <Button name="register_account" enabled="false" margin="0,5,15,10" halign="right" text="注册" cursortype="hand" font="24" disabledtextcolor="white" normaltextcolor="link_green"/>
                         <Button name="enter_login" margin="0,5,15,10" halign="right" text="直接登录" cursortype="hand" font="24" normaltextcolor="link_green" visible="false"/>
                     </HBox>
                     <!--帐号和密码-->
@@ -35,6 +35,11 @@
                             <RichEdit class="simple prompt" name="password" width="stretch" height="auto" margin="10,0,10,0" valign="center" font="2" password="true" prompttext="密码"/>
                         </HBox>
                     </VBox>
+                  <!--记住密码-->
+                  <HBox height="auto" name="remember_account_panel" margin="20,10,20,0">
+                    <CheckBox class="checkbox_font12" name="chkbox_rememberme" text="记住账号和密码" normaltextcolor="darkcolor"/>
+                    <Control />
+                  </HBox>
                 </VBox>
                 
 				<!--登录提示-->
@@ -56,8 +61,11 @@
                 <Label name="register_ok_toast" normalimage="register_ok.png" halign="center" valign="center" float="true" visible="false" fadealpha="true"/>
             </VBox>
         </Box>
-
-        <!--头像-->
+      <!--头像
+      <Box margin="0,64,0,0" mouse="false" width="276" height="64" halign="center">
+        <Control width="auto" height="auto" halign="center" valign="center" bkimage="logo48.png"/>
+      </Box>-->    
+      
         <Box margin="0,10,0,0" mouse="false" width="130" height="130" halign="center">
             <Control width="auto" height="auto" halign="center" valign="center" bkimage="logo.png"/>
             <Button name="headicon" width="106" height="106" borderround="106,106,106,106" halign="center" valign="center" mouse="false" fadealpha="true"/>

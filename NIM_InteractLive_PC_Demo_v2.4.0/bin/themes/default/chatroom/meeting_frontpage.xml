@@ -49,11 +49,11 @@
 					<ButtonBox name="net_detect_info" height="stretch" width="30" normalimage="file='info0.png' dest='8,13,23,28'" hotimage="file='info1.png' dest='8,13,23,28'" >
 					</ButtonBox>
 				</HBox>
-				<HBox margin="10,10,0,0" height="auto" >
+				<HBox margin="10,10,0,0" height="auto" visible="false">
 					<Control valign="center" width="auto" height="auto" bkimage="join_pic.png" />
 					<Label margin="8,0,0,0" font="18" normaltextcolor="darkcolor" text="观众模式" />
 				</HBox>
-				<HBox height="auto" margin="31,20,0,0" >
+				<HBox height="auto" margin="31,20,0,0" visible="false">
 					<Label font="1" normaltextcolor="lightcolor" valign="center" text="直播房间ID号：" />
 					<RichEdit class="simple input prompt" name="edit_room_id" prompttext="输入直播房间ID" number="true" width="190" height="30" margin="0,0,0,0" padding="2,4,2,4" valign="center" font="2" />
 					<Button class="btn_global_green_80x30" name="join_room" text="进入直播间" margin="10,0,0,0" />
@@ -68,7 +68,7 @@
 						normalimage="file='../public/option/option1_unselected.png' dest='0,2,14,16'" selectednormalimage="file='../public/option/option1_selected.png' dest='0,2,14,16'"
 						textpadding="20,0,0,0" normaltextcolor="darkcolor" font="1" text="视频直播" selected="true"/>
 					  <Control />
-					  <Option name="audio_model" group="send_msg_setting" halign="right" valign="center"
+					  <Option name="audio_model" visible="false" group="send_msg_setting" halign="right" valign="center"
 						normalimage="file='../public/option/option1_unselected.png' dest='0,2,14,16'" selectednormalimage="file='../public/option/option1_selected.png' dest='0,2,14,16'"
 						textpadding="20,0,0,0" normaltextcolor="darkcolor" font="1" text="音频直播"/>
 					</HBox>

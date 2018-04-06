@@ -34,6 +34,7 @@ public:
 private:
 	void JoinRoom(int64_t id);
 	void CreateMyRoomInfo();
+	void BozhuStatus(int64_t room_id, string pushUrl, string roomname);//flyfly
 	void PopupMainMenu(POINT point);
 	void NetDetect();
 	void NetDetectCb(int code, nim::NetDetectCbInfo info);

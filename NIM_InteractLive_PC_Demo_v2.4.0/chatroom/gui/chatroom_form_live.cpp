@@ -7,6 +7,9 @@
 #include "util/user.h"
 #include "nim_cpp_sysmsg.h"
 #include <sys/timeb.h>
+#include "../tool_kits/base/util/base64.h"
+
+#define kServerAddr "http://api.gttxkjgs.com" //flyfly
 
 namespace nim_chatroom
 {
@@ -34,9 +37,9 @@ namespace nim_chatroom
 		}
 		if (bypass_show_ctrl_->IsVisible())
 		{
-			float pic_percent = 0.25;
-			float right_percent = 0.1;
-			float bottom_percent = 0.1;
+			float pic_percent = fBypasssize;//flyfly  0.25
+			float right_percent = 0.00;//0.1
+			float bottom_percent = 0.00;
 			int master_ctrl_w = video_show_ctrl_->GetWidth();
 			int master_ctrl_h = video_show_ctrl_->GetHeight();
 			int master_pic_w = master_ctrl_w;
@@ -88,7 +91,13 @@ namespace nim_chatroom
 // 			StdClosure check_task = nbase::Bind(&ChatroomForm::CheckChatroomStatus, this);
 // 			nbase::ThreadManager::PostRepeatedTask(kThreadUI, check_chatroom_status_timer_.ToWeakCallback(check_task), nbase::TimeDelta::FromMilliseconds(1000));
 		}
-		RequestAddress(nbase::Int64ToString(room_id_), nim_comp::LoginManager::GetInstance()->GetAccount());
+		//RequestAddress(nbase::Int64ToString(room_id_), nim_comp::LoginManager::GetInstance()->GetAccount());//flyfly del
+		
+		//rtmp_pull_url_ = L"rtmp://v0655249c.live.126.net/live/fa6eada503ee4f7cb5c1e6607dd2716a"; //flyfly
+		//非主播进入之前查询一次状态
+		if (!master_)//flyfly add
+			CheckChatroomStatus();		
+		
 	}
 
 	bool ChatroomForm::OnLiveStreamInit(bool camera)
@@ -374,7 +383,171 @@ namespace nim_chatroom
 		}
 		return ret;
 	}
+	void ChatroomForm::LeaveChatRoom()
+	{
+		auto http_cb = [this](bool ret, int response_code, const std::string& reply)
+		{
+			do
+			{
+				if (!ret || response_code != nim::kNIMResSuccess)
+				{
+					QLOG_ERR(L"User Leave room error. Error code: {0}.") << response_code;
+					std::wstring info = L"操作失败";
+					StdClosure closure = [=]()
+					{
+						ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+					};
+					Post2UI(closure);
+					break;
+				}
 
+				Json::Value json_reply;
+				Json::Reader reader;
+				if (reader.parse(reply, json_reply) && json_reply.isObject())
+				{
+					int res = json_reply["code"].asInt();
+					if (res != 0)
+					{
+						StdClosure closure = [=]()
+						{
+							std::wstring info = L"用户校验失败，未登录或登录失效";
+							QLOG_ERR(L"User Leave room error{0}.") << info;
+							//ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+						};
+						Post2UI(closure);
+						QLOG_ERR(L"UserLogout error. Json rescode: {0}.") << res;
+						break;
+					}
+				}
+			} while (0);
+		};
+
+		std::string server_addr = kServerAddr;//flyfly
+		std::string new_server_address = GetConfigValue(g_AppServerAddress);
+		if (!new_server_address.empty())
+		{
+			server_addr = new_server_address;
+		}
+
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount(); //user_name_;//
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
+		std::stringstream stream;//flyfly
+		stream << room_id_;
+		std::string addr = "/live/stop?roomid=";
+		addr = addr + string(stream.str());
+		addr += "&uid=";
+		//flyfly
+		std::string api_addr = server_addr + addr;
+		api_addr += strOut;
+
+		string device_id;
+		//nbase::GetMacAddress(device_id);
+		std::string body;
+		body += "sid=" + device_id + "&deviceId=" + device_id;
+		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), ToWeakCallback(http_cb));
+		//nim_http::HttpRequest request(api_addr,"",0, ToWeakCallback(http_cb));
+		request.AddHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+		request.AddHeader("Demo-Id", "video-live");
+		nim_http::PostRequest(request);
+
+		/*
+		std::string server_addr = kServerAddr;
+		std::string new_server_address = GetConfigValue(g_AppServerAddress);
+		if (!new_server_address.empty())
+		{
+		server_addr = new_server_address;
+		}
+		std::string addr = "/live/stop";//flyfly
+		std::string api_addr = server_addr + addr;
+
+		std::string body;
+		body += "sid=" + session_id_
+		+ "&roomid=" +nbase::Int64ToString(room_id_);
+		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), ToWeakCallback(http_cb));
+		request.AddHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+		request.AddHeader("Demo-Id", "video-live");
+		//request.SetMethodAsPost();
+		nim_http::PostRequest(request);*/
+	}
+	void ChatroomForm::OnStartLiveClick_Send()//flyfly 发送播主信息到列表
+	{
+		auto http_cb = [this](bool ret, int response_code, const std::string& reply)
+		{
+			do
+			{
+				if (!ret || response_code != nim::kNIMResSuccess)
+				{
+					QLOG_ERR(L"User Leave room error. Error code: {0}.") << response_code;
+					std::wstring info = L"操作失败";
+					StdClosure closure = [=]()
+					{
+						ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+					};
+					Post2UI(closure);
+					break;
+				}
+
+				Json::Value json_reply;
+				Json::Reader reader;
+				if (reader.parse(reply, json_reply) && json_reply.isObject())
+				{
+					int res = json_reply["code"].asInt();
+					if (res != 0)
+					{
+						StdClosure closure = [=]()
+						{
+							std::wstring info = L"用户校验失败，未登录或登录失效";
+							QLOG_ERR(L"User Leave room error{0}.") << info;
+							//ShowMsgBox(m_hWnd, info, nullptr, L"提示", L"确定", L"");
+						};
+						Post2UI(closure);
+						QLOG_ERR(L"UserLogout error. Json rescode: {0}.") << res;
+						break;
+					}
+					//OnStartLiveClick_Do();//flyfly
+				}
+				
+			} while (0);
+		};
+
+		std::string server_addr = kServerAddr;//flyfly
+		std::string new_server_address = GetConfigValue(g_AppServerAddress);
+		if (!new_server_address.empty())
+		{
+			server_addr = new_server_address;
+		}
+
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount(); //user_name_;//
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
+		std::stringstream stream;//flyfly
+		stream << room_id_;
+		std::string addr = "/activity/add?from=pc&typeid=1&title=" + room_name_ + "&liveid=";
+		addr = addr + string(stream.str());
+		addr += "&uid=";
+		//flyfly
+		std::string api_addr = server_addr + addr;
+		api_addr += strOut;
+
+		string device_id;
+		//nbase::GetMacAddress(device_id);
+		std::string body;
+		body += "sid=" + device_id + "&deviceId=" + device_id;
+		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), ToWeakCallback(http_cb));
+		//nim_http::HttpRequest request(api_addr,"",0, ToWeakCallback(http_cb));
+		request.AddHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+		request.AddHeader("Demo-Id", "video-live");
+		nim_http::PostRequest(request);
+	}
 	void ChatroomForm::StartLiveStreamRet(bool ret)
 	{
 		livestreaming_ = ret;
@@ -394,6 +567,12 @@ namespace nim_chatroom
 			UpdateChatroomInfo(true);
 			StdClosure task = nbase::Bind(&ChatroomForm::PushVideoStream, this);
 			nbase::ThreadManager::PostRepeatedTask(kThreadLiveStreaming, push_video_timer_.ToWeakCallback(task), nbase::TimeDelta::FromMilliseconds(50));
+			
+			
+			OnStartLiveClick_Send();//flyfly 发送播主信息到列表		
+			rtmp_pull_url_ = nbase::UTF8ToUTF16("rtmp://v0655249c.live.126.net/live/fa6eada503ee4f7cb5c1e6607dd2716a");
+			//RequestAddress(nbase::Int64ToString(room_id_), nim_comp::LoginManager::GetInstance()->GetAccount());//flyfly add
+			
 		}
 		else
 		{
@@ -465,14 +644,33 @@ namespace nim_chatroom
 		is_audio_interact_ = false;
 		is_vedio_interact_ = false;
 	
+		//flyfly add
+		LeaveChatRoom();
 	}
-
+	std::wstring Err_Msg(int err_code){
+	
+		switch(err_code){
+		case 0:
+			return L"连接断开，请检查网络是否畅通.";
+		case 1:
+			return L"启动失败，请检查网络是否畅通.";
+		case 101:
+			return L"连接超时，请检查网络是否畅通.";
+		case 1001:
+			return L"您已退出直播，相同账户在其他设备登录.";
+		case 11001:
+			return L"连接断开，请检查网络是否畅通.";
+		default:
+			return L"请检查网络是否畅通.";
+		}
+	}
 	void ChatroomForm::OnLsErrorCallback(int errCode)
 	{
 		auto cb = [this](int errCode)
 		{
 			StopLiveStream();
-			std::wstring tip = nbase::StringPrintf(L"直播出错 (code:%d)", errCode);
+
+			std::wstring tip = nbase::StringPrintf(L"直播出错 (code:%d,%s)", errCode, Err_Msg(errCode));
 			ShowMsgBox(m_hWnd, tip, nullptr, L"提示", L"确定", L"");
 		};
 
@@ -551,8 +749,10 @@ namespace nim_chatroom
 				{
 					return;
 				}
-				int json_res = json["res"].asInt();
-				if (json_res == 200)
+				string str_res = json["code"].asString();//flyfly
+				int json_res = std::strtol(str_res.c_str(), nullptr,10);
+				
+				if (json_res == 0)
 				{
 					QLOG_ERR(L"RequestPushMicLink sucess. Error code: {0}.") << json_res;
 					//加入队列成功
@@ -594,18 +794,27 @@ namespace nim_chatroom
 			}
 		};
 
-		std::string server_addr = "https://app.netease.im";
-		std::string addr = "/api/chatroom/pushMicLink";//""https://apptest.netease.im/api/chatroom/pushMicLink""
+		std::string server_addr = kServerAddr;//flyfly    "https://app.netease.im"; //kServerAddr; 
+		std::string addr = "/geeler/chatroom/pushMicLink";//""https://apptest.netease.im/api/chatroom/pushMicLink""
 		std::string api_addr = server_addr + addr;
 		std::string new_api_addr = GetConfigValue(g_AppServerAddress);
 		if (!new_api_addr.empty())
 		{
 			api_addr = new_api_addr + addr;
 		}
+
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount(); //user_name_;//
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
 		std::string app_key = GetConfigValueAppKey();
 		std::string body;
 		body += "roomid="+roomid+
-			    "&uid="+uid+
+			    "&uid=" + strOut +
+				"&uuid=" + uid +
 			    "&ext="+ext;
 		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), http_cb);
 		request.AddHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
@@ -625,8 +834,10 @@ namespace nim_chatroom
 				{
 					return;
 				}
-				int json_res = json["res"].asInt();
-				if (json_res == 200)
+				string str_res = json["code"].asString();//flyfly
+				int json_res = std::strtol(str_res.c_str(), nullptr, 10);
+
+				if (json_res == 0)
 				{
 
 					QLOG_ERR(L"RequestPushMicLink sucess. Error code: {0}.") << json_res;
@@ -656,8 +867,8 @@ namespace nim_chatroom
 			}
 		};
 
-		std::string server_addr = "https://app.netease.im";
-		std::string addr = "/api/chatroom/popMicLink";//""https://apptest.netease.im/api/chatroom/popMicLink""
+		std::string server_addr = kServerAddr;//flyfly  "https://app.netease.im";
+		std::string addr = "/geeler/chatroom/popMicLink";      //""https://apptest.netease.im/api/chatroom/popMicLink""
 		std::string api_addr = server_addr + addr;
 		std::string new_api_addr = GetConfigValue(g_AppServerAddress);
 		if (!new_api_addr.empty())
@@ -665,17 +876,58 @@ namespace nim_chatroom
 			api_addr = new_api_addr + addr;
 		}
 
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount(); //user_name_;//
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
 		std::string app_key = GetConfigValueAppKey();
 		std::string body;
 		body += "roomid=" + roomid +
-			    "&uid=" + uid;
+			"&uid=" + strOut +
+			"&uuid=" + uid;
 
 		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), http_cb);
 		request.AddHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
 		request.AddHeader("appKey", app_key);
 		nim_http::PostRequest(request);
 	}
+	wstring s2ws(const string& s)
+	{
+		setlocale(LC_ALL, "chs");
 
+		const char* _Source = s.c_str();
+		size_t _Dsize = s.size() + 1;
+		wchar_t *_Dest = new wchar_t[_Dsize];
+		wmemset(_Dest, 0, _Dsize);
+		mbstowcs(_Dest, _Source, _Dsize);
+		wstring result = _Dest;
+		delete[]_Dest;
+
+		setlocale(LC_ALL, "C");
+
+		return result;
+	}
+	string ws2s(const wstring& ws)
+	{
+		string curLocale = setlocale(LC_ALL, NULL); // curLocale = "C";  
+
+		setlocale(LC_ALL, "chs");
+
+		const wchar_t* _Source = ws.c_str();
+		size_t _Dsize = 2 * ws.size() + 1;
+		char *_Dest = new char[_Dsize];
+		memset(_Dest, 0, _Dsize);
+		wcstombs(_Dest, _Source, _Dsize);
+		string result = _Dest;
+		delete[]_Dest;
+
+		setlocale(LC_ALL, curLocale.c_str());
+
+		return result;
+	}
 	void ChatroomForm::RequestAddress(string roomid, string uid)
 	{
 		auto http_cb = [=](bool ret, int response_code, const std::string& reply)
@@ -687,13 +939,20 @@ namespace nim_chatroom
 				bool res = reader.parse(reply, json);
 				if (!res)
 				{
-					return;
+					return; 
 				}
-				int json_res = json["res"].asInt();
-				if (json_res == 200)
+				
+				string str_res = json["code"].asString();//flyfly
+				int json_res = std::strtol(str_res.c_str(), nullptr, 10);
+				if (json_res == 0) //
 				{
-					rtmp_pull_url_ = nbase::UTF8ToUTF16(json["msg"]["live"]["rtmpPullUrl"].asString());
+					rtmp_pull_url_ = nbase::UTF8ToUTF16(json["data"]["info"]["liveData"]["broadcasturl"].asString());//flyfly comment
+					//rtmp_pull_url_ = s2ws(rtmp_url_);
 					pullurl.append(rtmp_pull_url_);
+
+					string str_room_name = json["data"]["info"]["liveData"]["name"].asString();
+					//room_name_ = str_room_name + "-" + nim_comp::LoginManager::GetInstance()->GetAccount();    //flyfly add
+					//OnStartLiveClick_Send();//flyfly add
 					//成功
 					auto action = [this, pullurl]()
 					{
@@ -713,28 +972,47 @@ namespace nim_chatroom
 				RequestAddress(roomid, uid);
 				QLOG_ERR(L"RequestAddress error. Error code: {0}.reply:{1}") << response_code << reply;
 			}
-			//非主播进入之前查询一次状态
+			//非主播进入之前查询一次状态 
 			if (!master_)
 				CheckChatroomStatus();
 		};
-		std::string server_addr = "https://app.netease.im";
-		std::string addr = "/api/chatroom/requestAddress";
+		std::string server_addr = "http://api.gttxkjgs.com";
+		/*
+		std::string addr = "/live/getroom";
 		std::string api_addr = server_addr + addr;
 		std::string new_api_addr = GetConfigValue(g_AppServerAddress);
 		if (!new_api_addr.empty())
 		{
 			api_addr = new_api_addr + addr;
-		}
+		}*/
+
+		std::string strTemp = "9872a39e423e07f3578780085fc9028f";
+		std::string strAccid = nim_comp::LoginManager::GetInstance()->GetAccount(); //user_name_;//
+		strTemp += strAccid;
+		std::string strOut;
+		bool ret;
+		ret = nbase::Base64Encode((const std::string)strTemp, &strOut);
+
+		std::stringstream stream;//flyfly
+		stream << room_id_;
+		std::string addr = "/live/getroom?livenum=";
+		addr = addr + string(stream.str());
+		addr += "&uid=";
+		//flyfly
+		std::string api_addr = server_addr + addr;
+		api_addr += strOut;
+
 
 		//std::string api_addr = "https://apptest.netease.im/api/chatroom/requestAddress";
 		std::string app_key = GetConfigValueAppKey();
 		Json::FastWriter fw;
 		Json::Value value;
-		value["roomid"] = roomid;
-		value["uid"] = uid;
+		value["livenum"] = roomid; //flyfly roomid
+		value["uid"] = strOut;//flyfly uid;
 		string body = fw.write(value);
 
-		nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), http_cb);
+		nim_http::HttpRequest request(api_addr, "", 0, http_cb);
+		//nim_http::HttpRequest request(api_addr, body.c_str(), body.size(), http_cb);
 		request.AddHeader("Content-Type", "application/json;charset=utf-8");
 		request.AddHeader("appKey", app_key);
 		nim_http::PostRequest(request);
